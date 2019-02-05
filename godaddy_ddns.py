@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # Update GoDaddy DNS "A" Record.
 #
@@ -83,7 +83,8 @@ def main():
 
   if not args.ip:
     try:
-      with urlopen("http://ipv4.icanhazip.com/") as f: resp=f.read()
+      f = urlopen("http://ipv4.icanhazip.com/")
+      resp=f.read()
       if sys.version_info > (3,): resp = resp.decode('utf-8')
       args.ip = resp.strip()
     except URLError:
@@ -100,15 +101,16 @@ def main():
   url = 'https://api.godaddy.com/v1/domains/{}/records/A/{}'.format('.'.join(hostnames[1:]),hostnames[0])
   data = json.dumps([ { "data": args.ip, "ttl": args.ttl, "name": hostnames[0], "type": "A" } ])
   if sys.version_info > (3,):  data = data.encode('utf-8')
-  req = Request(url, method='PUT', data=data)
-
+  req = Request(url, data=data)
+  req.get_method = lambda:"PUT"
   req.add_header("Content-Type","application/json")
   req.add_header("Accept","application/json")
   if args.key and args.secret:
     req.add_header("Authorization", "sso-key {}:{}".format(args.key,args.secret))
 
   try:
-    with urlopen(req) as f: resp = f.read()
+    f = urlopen(req)
+    resp = f.read()
     if sys.version_info > (3,):  resp = resp.decode('utf-8')
     # resp = json.loads(resp)
   except HTTPError as e:
