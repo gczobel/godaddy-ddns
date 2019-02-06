@@ -40,6 +40,18 @@ author='Carl Edman (CarlEdman@gmail.com)'
 
 import sys, json, argparse
 
+import logging
+import logging.handlers
+import os
+import socket
+ 
+handler = logging.handlers.WatchedFileHandler(os.environ.get("LOGFILE", "/var/log/godaddy_ddns.log"))
+formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s')
+handler.setFormatter(formatter)
+root = logging.getLogger()
+root.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+root.addHandler(handler)
+
 if sys.version_info > (3,):
   from urllib.request import urlopen, Request
   from urllib.error import URLError, HTTPError
@@ -98,6 +110,15 @@ def main():
     msg = '"{}" is not valid IP address.'.format(args.ip)
     raise Exception(msg)
 
+
+  # compare current real IP (from ipv4.icanhazip.com) with the IP returned by checking the hostname IP.
+  actualIP = socket.gethostbyname(args.hostname) 
+  if (actualIP == args.ip):
+    logging.info('Actual IP for hostname "{}" matches the public IP {}'.format(args.hostname, actualIP))
+    sys.exit()
+
+  logging.info('Actual IP for hostname "{}" does not matches the public IP {}'.format(args.hostname, actualIP))
+
   url = 'https://api.godaddy.com/v1/domains/{}/records/A/{}'.format('.'.join(hostnames[1:]),hostnames[0])
   data = json.dumps([ { "data": args.ip, "ttl": args.ttl, "name": hostnames[0], "type": "A" } ])
   if sys.version_info > (3,):  data = data.encode('utf-8')
@@ -134,12 +155,21 @@ Correct values can be obtained from from https://developer.godaddy.com/keys/ and
         msg = 'Unable to set IP address: too many requests to GoDaddy within brief period.'
     else:
       msg = 'Unable to set IP address: GoDaddy API failure because "{}".'.format(e.reason)
-    raise Exception(msg)
+    try:
+      raise ValueError(msg)
+    except ValueError:
+      logging.exception(msg)
+      raise
   except URLError as e:
     msg = 'Unable to set IP address: GoDaddy API failure because "{}".'.format(e.reason)
-    raise Exception(msg)
+    try:
+      raise RuntimeError(msg)
+    except RuntimeError:
+      logging.exception(msg)
+      raise
 
-  print('IP address for {} set to {}.'.format(args.hostname,args.ip))
+  logging.info('IP address for {} set to {}.'.format(args.hostname,args.ip))
+  #print('IP address for {} set to {}.'.format(args.hostname,args.ip))
 
 if __name__ == '__main__':
   main()
