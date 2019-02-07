@@ -45,7 +45,7 @@ import logging.handlers
 import os
 import socket
  
-handler = logging.handlers.WatchedFileHandler(os.environ.get("LOGFILE", "/var/log/godaddy_ddns.log"))
+handler = logging.handlers.RotatingFileHandler(os.environ.get("LOGFILE", "/var/log/godaddy_ddns.log"), mode='a', maxBytes=32768, backupCount=1)
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s')
 handler.setFormatter(formatter)
 root = logging.getLogger()
